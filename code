@@ -1,0 +1,138 @@
+import numpy as np
+import pandas as pd
+import nltk
+import re
+
+# Download NLTK stopwords data
+nltk.download('stopwords')
+
+from nltk.corpus import stopwords
+from nltk.stem.porter import PorterStemmer
+from nltk.stem.snowball import SnowballStemmer
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.svm import SVC
+from sklearn.model_selection import train_test_split, KFold
+from sklearn.metrics import accuracy_score
+from sklearn.metrics import classification_report, accuracy_score, confusion_matrix
+
+# Read the CSV file
+df = pd.read_csv('Restaurant_Reviews.csv')
+
+corpus = []
+
+# Initialize the TF-IDF vectorizer
+tfidf_vectorizer = TfidfVectorizer(max_features=1500)
+
+for i in range(0, 1000):
+    review = re.sub(pattern='[^a-zA-Z]', repl=' ', string=df['Review'][i])
+    review = review.lower()
+    review_words = review.split()
+    review_words = [word for word in review_words if not word in set(stopwords.words('english'))]
+    ps = PorterStemmer()
+    review = [ps.stem(word) for word in review_words]
+    review = ' '.join(review)
+    corpus.append(review)
+
+# Transform the text data into TF-IDF features
+X = tfidf_vectorizer.fit_transform(corpus).toarray()
+y = df.iloc[:, 1].values
+
+# Split the dataset into training and testing sets
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.20, random_state=0)
+
+# Define the Random Forest Classifier model
+model = RandomForestClassifier(n_estimators=100, max_depth=6, min_samples_split=4, min_samples_leaf=2, random_state=42)
+# model = RandomForestClassifier(n_estimators=100, max_depth=5, random_state=42)
+# model = RandomForestClassifier(n_estimators=10, max_depth=2, random_state=42)
+# model = RandomForestClassifier(n_estimators=50, max_depth=5, min_samples_split=5, min_samples_leaf=2, random_state=42)
+# model = RandomForestClassifier(n_estimators=100, max_depth=10, min_samples_split=5, min_samples_leaf=2, random_state=42)
+# model = RandomForestClassifier(n_estimators=50, max_depth=5, min_samples_split=10, min_samples_leaf=5, random_state=42)
+
+num_folds = 11
+
+# Initialize a KFold cross-validator
+# kf = KFold(n_splits=num_folds, shuffle=True, random_state=42)
+kf = KFold(n_splits=num_folds, shuffle=True, random_state=41)
+
+# Lists to store accuracies
+train_accuracies = []
+test_accuracies = []
+
+# Loop through k-fold cross-validation
+for train_index, test_index in kf.split(X):
+    X_train, X_test = X[train_index], X[test_index]
+    y_train, y_test = y[train_index], y[test_index]
+
+    model.fit(X_train, y_train)
+    y_train_pred = model.predict(X_train)
+    y_test_pred = model.predict(X_test)
+
+    train_accuracy = accuracy_score(y_train, y_train_pred)
+    test_accuracy = accuracy_score(y_test, y_test_pred)
+    accuracy_diff = abs(train_accuracy - test_accuracy)
+
+    train_accuracies.append(train_accuracy)
+    test_accuracies.append(test_accuracy)
+    
+    
+
+# Text preprocessing and TF-IDF vectorization
+stemmer = SnowballStemmer('english')
+corpus = []
+for i in range(len(df)):
+    review = re.sub('[^a-zA-Z]', ' ', df['Review'][i])
+    review = review.lower()
+    review = review.split()
+    review = [stemmer.stem(word) for word in review if word not in set(stopwords.words('english'))]
+    review = ' '.join(review)
+    corpus.append(review)
+    
+tf = TfidfVectorizer(max_features=1500, min_df=2)
+x = tf.fit_transform(corpus).toarray()
+y = df['Liked'].values
+
+# Split the data with the same random seed for consistency
+x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.2, random_state=41)
+
+classifier = SVC(kernel='linear', C=0.1, random_state=42)
+classifier.fit(x_train, y_train)
+
+y_pred = classifier.predict(x_test)
+y_train_pred = classifier.predict(x_train)
+
+confusion_matrix(y_test,y_pred)
+
+print(classification_report(y_test,y_pred))
+
+
+
+
+# Calculate the average training and testing accuracies
+average_train_accuracy = np.mean(train_accuracies)
+average_test_accuracy = np.mean(test_accuracies)
+
+
+
+  # Print the results
+print("model-1")
+print(f"Training Accuracy: {average_train_accuracy * 100:.2f}%")
+print(f"Testing Accuracy: {average_test_accuracy * 100:.2f}%")
+print("Accuracy Difference: {:.2f}%".format(accuracy_diff * 100))
+
+
+
+    # Evaluate the model
+test_accuracy = accuracy_score(y_test, y_pred)
+train_accuracy = accuracy_score(y_train, y_train_pred)
+accuracy_diff = abs(train_accuracy - test_accuracy)
+
+    # Print the results
+print("model-2")
+print("Training Accuracy: {:.2f}%".format(train_accuracy * 100))
+print("Testing Accuracy: {:.2f}%".format(test_accuracy * 100))
+print("Accuracy Difference: {:.2f}%".format(accuracy_diff * 100))
+print("=" * 50)
+
+
+  
